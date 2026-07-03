@@ -8,6 +8,7 @@ from typing import Optional, List
 
 from nexode.commands import InstallCommand, RemoveCommand, NewCommand
 from nexode.utils.path import LinuxPath
+from nexode.templates import TemplateManager
 
 
 class NexodeCLI:
@@ -67,13 +68,19 @@ class NexodeCLI:
         new_parser.add_argument(
             "project_name",
             type=str,
+            nargs="?",  # Make project_name optional
             help="Name of the new project"
         )
         new_parser.add_argument(
             "--template",
             type=str,
             default=None,
-            help="Template to use for the new project"
+            help="Template to use for the new project (e.g., 'luau-lsp')"
+        )
+        new_parser.add_argument(
+            "--list-templates",
+            action="store_true",
+            help="List available templates and exit"
         )
 
     def parse_args(self, args: Optional[List[str]] = None) -> argparse.Namespace:
@@ -96,6 +103,12 @@ class NexodeCLI:
                     package_name=parsed_args.package_name
                 )
             elif command == "new":
+                if parsed_args.list_templates:
+                    self._list_templates()
+                    return True
+                if not parsed_args.project_name:
+                    print("Error: project_name is required when not using --list-templates", file=sys.stderr)
+                    return False
                 cmd = NewCommand(
                     project_name=parsed_args.project_name,
                     template=parsed_args.template
@@ -109,6 +122,17 @@ class NexodeCLI:
         except Exception as e:
             print(f"Error executing command: {e}", file=sys.stderr)
             return False
+
+    def _list_templates(self) -> None:
+        """List available templates."""
+        templates = TemplateManager.get_available_templates()
+        if not templates:
+            print("No templates available.")
+            return
+
+        print("Available templates:")
+        for name in sorted(templates.keys()):
+            print(f"  - {name}")
 
     def run(self) -> None:
         """Run the CLI."""
